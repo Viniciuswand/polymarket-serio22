@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PolyAlpha Monitor</title>
+  <meta name="description" content="Monitor sério de mercados do Polymarket com dados atuais da API oficial." />
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121932;
+      --panel-2: #0f1730;
+      --line: #24304f;
+      --text: #edf2ff;
+      --muted: #9fb0d4;
+      --good: #2fd17f;
+      --bad: #ff5f70;
+      --warn: #ffca57;
+      --blue: #68a3ff;
+      --shadow: 0 16px 40px rgba(0,0,0,.28);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: linear-gradient(180deg, #09101f 0%, #0b1020 100%); color: var(--text); }
+    a { color: inherit; }
+    button, input, select { font: inherit; }
+
+    .shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .hero-card,
+    .panel,
+    .stat,
+    .table-wrap,
+    .notice,
+    .empty {
+      background: linear-gradient(180deg, rgba(18,25,50,.96), rgba(13,20,41,.96));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+      padding: 24px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hero-title {
+      font-size: 14px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.05;
+      letter-spacing: -.04em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .hero-side {
+      width: min(360px, 100%);
+      display: grid;
+      gap: 14px;
+    }
+
+    .status-card {
+      padding: 18px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+    }
+
+    .badge .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--warn);
+      box-shadow: 0 0 0 3px rgba(255,202,87,.15);
+    }
+
+    .badge.ok .dot {
+      background: var(--good);
+      box-shadow: 0 0 0 3px rgba(47,209,127,.14);
+    }
+
+    .badge.err .dot {
+      background: var(--bad);
+      box-shadow: 0 0 0 3px rgba(255,95,112,.14);
+    }
+
+    .status-meta {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1.4fr repeat(3, minmax(150px, 220px)) auto;
+      gap: 12px;
+      margin: 20px 0 18px;
+      align-items: center;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .control {
+      width: 100%;
+      background: #0d1430;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 14px;
+      outline: none;
+    }
+
+    .control:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(104,163,255,.12);
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      cursor: pointer;
+      font-weight: 800;
+      color: #08111f;
+      background: linear-gradient(180deg, #9ec0ff 0%, #6aa6ff 100%);
+      box-shadow: 0 12px 28px rgba(104,163,255,.22);
+      transition: transform .12s ease, opacity .12s ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: .65; cursor: wait; transform: none; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      padding: 18px;
+    }
+
+    .stat-title {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .stat-value {
+      margin: 0;
+      font-size: clamp(24px, 2.8vw, 38px);
+      letter-spacing: -.04em;
+      font-weight: 800;
+    }
+
+    .stat-sub {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .notice {
+      padding: 16px 18px;
+      margin-bottom: 16px;
+      display: none;
+      line-height: 1.6;
+    }
+
+    .notice.show { display: block; }
+    .notice.error { border-color: rgba(255,95,112,.35); color: #ffd8dd; }
+    .notice.info { border-color: rgba(104,163,255,.35); color: #dfe9ff; }
+
+    .table-wrap {
+      overflow: hidden;
+    }
+
+    .table-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 18px 0;
+    }
+
+    .table-head h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: -.03em;
+    }
+
+    .table-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .table-scroll {
+      overflow: auto;
+      padding: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1120px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 14px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      vertical-align: middle;
+    }
+
+    th {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 800;
+      position: sticky;
+      top: 0;
+      background: #111937;
+      z-index: 2;
+    }
+
+    tbody tr:hover { background: rgba(255,255,255,.025); }
+
+    .market-cell {
+      min-width: 380px;
+    }
+
+    .market-title {
+      font-weight: 800;
+      margin-bottom: 6px;
+      line-height: 1.35;
+    }
+
+    .market-meta {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .yes { color: var(--good); font-weight: 800; }
+    .no { color: var(--bad); font-weight: 800; }
+    .pos { color: var(--good); font-weight: 800; }
+    .neg { color: var(--bad); font-weight: 800; }
+    .muted { color: var(--muted); }
+
+    .open-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      min-width: 100px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-weight: 800;
+      border: 1px solid rgba(104,163,255,.35);
+      color: #dbe7ff;
+      background: rgba(104,163,255,.08);
+    }
+
+    .open-link:hover { border-color: rgba(104,163,255,.7); background: rgba(104,163,255,.14); }
+
+    .empty {
+      padding: 38px 20px;
+      text-align: center;
+      color: var(--muted);
+      display: none;
+    }
+
+    .footnote {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .tiny {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1080px) {
+      .hero { flex-direction: column; }
+      .hero-side { width: 100%; grid-template-columns: 1fr 1fr; }
+      .toolbar { grid-template-columns: 1fr 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .shell { padding: 16px; }
+      .hero-side, .toolbar, .stats { grid-template-columns: 1fr; }
+      .hero-card, .status-card, .stat, .table-scroll { padding-left: 16px; padding-right: 16px; }
+      .table-head { padding: 16px 16px 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-card">
+        <div class="hero-title">Polymarket monitor</div>
+        <h1>Dados reais, sem mock, sem “análise inventada”.</h1>
+        <p>
+          Este painel consome dados atuais do Polymarket via API oficial, usando um endpoint do mesmo domínio para evitar dependência de proxies públicos.
+          Quando a API falha, o site mostra erro — não substitui por números simulados.
+        </p>
+      </div>
+
+      <div class="hero-side">
+        <div class="status-card panel">
+          <div class="status-row">
+            <div class="badge" id="statusBadge"><span class="dot"></span><span id="statusText">Conectando…</span></div>
+            <div class="tiny" id="lastSync">—</div>
+          </div>
+          <div class="status-meta" id="statusMeta">
+            Preparando leitura da API oficial.
+          </div>
+        </div>
+
+        <div class="status-card panel">
+          <div class="status-row" style="margin-bottom:8px;">
+            <strong>Atualização</strong>
+            <span class="tiny">30s</span>
+          </div>
+          <div class="status-meta">
+            O painel recarrega automaticamente a lista e permite atualização manual a qualquer momento.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <div class="field">
+        <label for="searchInput">Buscar mercado</label>
+        <input id="searchInput" class="control" type="search" placeholder="Ex.: bitcoin, election, fed, brazil…" />
+      </div>
+
+      <div class="field">
+        <label for="categorySelect">Categoria</label>
+        <select id="categorySelect" class="control">
+          <option value="all">Todas</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="sortSelect">Ordenar por</label>
+        <select id="sortSelect" class="control">
+          <option value="volume24hr">Volume 24h</option>
+          <option value="volume">Volume total</option>
+          <option value="liquidity">Liquidez</option>
+          <option value="gapDesc">Maior gap YES+NO</option>
+          <option value="gapAsc">Menor gap YES+NO</option>
+          <option value="endDate">Vencimento mais próximo</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="limitSelect">Mercados</label>
+        <select id="limitSelect" class="control">
+          <option value="40">40</option>
+          <option value="60" selected>60</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>&nbsp;</label>
+        <button id="refreshBtn" class="btn" type="button">Atualizar agora</button>
+      </div>
+    </section>
+
+    <section class="stats">
+      <article class="stat">
+        <p class="stat-title">Mercados carregados</p>
+        <p class="stat-value" id="statCount">—</p>
+        <div class="stat-sub">Itens visíveis após filtros</div>
+      </article>
+      <article class="stat">
+        <p class="stat-title">Volume 24h somado</p>
+        <p class="stat-value" id="statVol24">—</p>
+        <div class="stat-sub">Nos mercados visíveis</div>
+      </article>
+      <article class="stat">
+        <p class="stat-title">Liquidez somada</p>
+        <p class="stat-value" id="statLiquidity">—</p>
+        <div class="stat-sub">Profundidade agregada</div>
+      </article>
+      <article class="stat">
+        <p class="stat-title">Gap YES+NO &gt; 0</p>
+        <p class="stat-value" id="statPositiveGap">—</p>
+        <div class="stat-sub">Apenas indicativo; fees e slippage importam</div>
+      </article>
+    </section>
+
+    <div id="notice" class="notice info"></div>
+
+    <section class="table-wrap">
+      <div class="table-head">
+        <div>
+          <h2>Mercados ativos</h2>
+          <p>Fonte: Polymarket Gamma API. Sem fallback simulado.</p>
+        </div>
+        <div class="tiny" id="resultMeta">—</div>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Mercado</th>
+              <th>Categoria</th>
+              <th>YES</th>
+              <th>NO</th>
+              <th>Gap YES+NO</th>
+              <th>Vol. 24h</th>
+              <th>Vol. total</th>
+              <th>Liquidez</th>
+              <th>Vence</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="marketsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div id="emptyState" class="empty">
+      Nenhum mercado encontrado com os filtros atuais.
+    </div>
+
+    <p class="footnote">
+      <strong>Nota de integridade:</strong> “Gap YES+NO” aqui é a diferença entre 1,00 e a soma dos preços exibidos para YES e NO no objeto de mercado.
+      Isso não substitui análise de livro de ofertas, fees, restrições geográficas, tamanho mínimo, nem liquidez executável.
+      Para operação real, trate isso como radar inicial.
+    </p>
+  </main>
+
+  <script>
+    const state = {
+      raw: [],
+      filtered: [],
+      loading: false,
+      timer: null,
+      lastSyncIso: null,
+    };
+
+    const els = {
+      statusBadge: document.getElementById('statusBadge'),
+      statusText: document.getElementById('statusText'),
+      statusMeta: document.getElementById('statusMeta'),
+      lastSync: document.getElementById('lastSync'),
+      searchInput: document.getElementById('searchInput'),
+      categorySelect: document.getElementById('categorySelect'),
+      sortSelect: document.getElementById('sortSelect'),
+      limitSelect: document.getElementById('limitSelect'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      marketsBody: document.getElementById('marketsBody'),
+      emptyState: document.getElementById('emptyState'),
+      notice: document.getElementById('notice'),
+      statCount: document.getElementById('statCount'),
+      statVol24: document.getElementById('statVol24'),
+      statLiquidity: document.getElementById('statLiquidity'),
+      statPositiveGap: document.getElementById('statPositiveGap'),
+      resultMeta: document.getElementById('resultMeta'),
+    };
+
+    const money = new Intl.NumberFormat('en-US', {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+      style: 'currency',
+      currency: 'USD'
+    });
+
+    function formatUSD(value) {
+      const n = Number(value || 0);
+      return money.format(n);
+    }
+
+    function formatProb(value) {
+      const n = Number(value || 0);
+      return `${(n * 100).toFixed(1)}¢`;
+    }
+
+    function formatGap(value) {
+      const n = Number(value || 0);
+      const cents = n * 100;
+      const sign = cents > 0 ? '+' : '';
+      return `${sign}${cents.toFixed(1)}¢`;
+    }
+
+    function formatDate(value) {
+      if (!value) return '—';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return '—';
+      return d.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function setStatus(mode, text, meta) {
+      els.statusBadge.className = 'badge';
+      if (mode === 'ok') els.statusBadge.classList.add('ok');
+      if (mode === 'err') els.statusBadge.classList.add('err');
+      els.statusText.textContent = text;
+      els.statusMeta.textContent = meta;
+    }
+
+    function setNotice(message, type = 'info') {
+      if (!message) {
+        els.notice.className = 'notice';
+        els.notice.textContent = '';
+        return;
+      }
+      els.notice.className = `notice show ${type}`;
+      els.notice.textContent = message;
+    }
+
+    function normalizeMarket(m) {
+      const yes = Number(m.yesPrice ?? 0);
+      const no = Number(m.noPrice ?? 0);
+      return {
+        id: m.id,
+        question: m.question || 'Mercado sem título',
+        slug: m.slug || '',
+        category: m.category || 'Sem categoria',
+        yesPrice: yes,
+        noPrice: no,
+        gap: 1 - (yes + no),
+        volume24hr: Number(m.volume24hr || 0),
+        volume: Number(m.volume || 0),
+        liquidity: Number(m.liquidity || 0),
+        endDate: m.endDate || null,
+        url: m.url || '#',
+      };
+    }
+
+    async function loadMarkets() {
+      if (state.loading) return;
+      state.loading = true;
+      els.refreshBtn.disabled = true;
+      setStatus('', 'Atualizando…', 'Consultando o endpoint interno que busca a API oficial do Polymarket.');
+      setNotice('');
+
+      try {
+        const limit = encodeURIComponent(els.limitSelect.value || '60');
+        const response = await fetch(`/api/markets?limit=${limit}`, {
+          headers: { 'Accept': 'application/json' },
+          cache: 'no-store'
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(payload.error || 'Falha ao consultar a API.');
+        }
+
+        const markets = Array.isArray(payload.markets) ? payload.markets.map(normalizeMarket) : [];
+        state.raw = markets;
+        state.lastSyncIso = payload.meta?.fetchedAt || new Date().toISOString();
+
+        setStatus('ok', 'Online', 'Dados recebidos da API oficial. Nenhum fallback simulado foi usado.');
+        els.lastSync.textContent = `Sync: ${formatDate(state.lastSyncIso)}`;
+        setNotice(`Carregados ${markets.length} mercados do Polymarket.`, 'info');
+        rebuildCategories();
+        applyFilters();
+      } catch (error) {
+        state.raw = [];
+        state.filtered = [];
+        renderTable();
+        updateStats();
+        setStatus('err', 'Falha na carga', 'A API não respondeu de forma confiável. O painel não exibirá dados inventados.');
+        els.lastSync.textContent = 'Sem sync válido';
+        setNotice(error?.message || 'Erro ao consultar os dados.', 'error');
+      } finally {
+        state.loading = false;
+        els.refreshBtn.disabled = false;
+      }
+    }
+
+    function rebuildCategories() {
+      const current = els.categorySelect.value;
+      const categories = [...new Set(state.raw.map(item => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      els.categorySelect.innerHTML = '<option value="all">Todas</option>' + categories.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
+      if (categories.includes(current)) {
+        els.categorySelect.value = current;
+      }
+    }
+
+    function applyFilters() {
+      const term = els.searchInput.value.trim().toLowerCase();
+      const category = els.categorySelect.value;
+      const sort = els.sortSelect.value;
+
+      let list = state.raw.filter(item => {
+        const matchesTerm = !term || `${item.question} ${item.category}`.toLowerCase().includes(term);
+        const matchesCategory = category === 'all' || item.category === category;
+        return matchesTerm && matchesCategory;
+      });
+
+      const sorters = {
+        volume24hr: (a, b) => b.volume24hr - a.volume24hr,
+        volume: (a, b) => b.volume - a.volume,
+        liquidity: (a, b) => b.liquidity - a.liquidity,
+        gapDesc: (a, b) => b.gap - a.gap,
+        gapAsc: (a, b) => a.gap - b.gap,
+        endDate: (a, b) => {
+          const av = a.endDate ? new Date(a.endDate).getTime() : Number.MAX_SAFE_INTEGER;
+          const bv = b.endDate ? new Date(b.endDate).getTime() : Number.MAX_SAFE_INTEGER;
+          return av - bv;
+        },
+      };
+
+      list = list.sort(sorters[sort] || sorters.volume24hr);
+      state.filtered = list;
+      renderTable();
+      updateStats();
+    }
+
+    function renderTable() {
+      const rows = state.filtered.map(item => {
+        const gapClass = item.gap >= 0 ? 'pos' : 'neg';
+        return `
+          <tr>
+            <td class="market-cell">
+              <div class="market-title">${escapeHtml(item.question)}</div>
+              <div class="market-meta">
+                <span>ID ${escapeHtml(item.id || '—')}</span>
+                <span>${escapeHtml(item.slug || 'sem-slug')}</span>
+              </div>
+            </td>
+            <td><span class="pill">${escapeHtml(item.category)}</span></td>
+            <td class="yes">${formatProb(item.yesPrice)}</td>
+            <td class="no">${formatProb(item.noPrice)}</td>
+            <td class="${gapClass}">${formatGap(item.gap)}</td>
+            <td>${formatUSD(item.volume24hr)}</td>
+            <td>${formatUSD(item.volume)}</td>
+            <td>${formatUSD(item.liquidity)}</td>
+            <td class="muted">${formatDate(item.endDate)}</td>
+            <td><a class="open-link" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">Abrir ↗</a></td>
+          </tr>
+        `;
+      }).join('');
+
+      els.marketsBody.innerHTML = rows;
+      els.emptyState.style.display = state.filtered.length ? 'none' : 'block';
+      els.resultMeta.textContent = `${state.filtered.length} resultado(s) visível(is)`;
+    }
+
+    function updateStats() {
+      const list = state.filtered;
+      const vol24 = list.reduce((sum, item) => sum + item.volume24hr, 0);
+      const liquidity = list.reduce((sum, item) => sum + item.liquidity, 0);
+      const positiveGap = list.filter(item => item.gap > 0).length;
+
+      els.statCount.textContent = String(list.length);
+      els.statVol24.textContent = formatUSD(vol24);
+      els.statLiquidity.textContent = formatUSD(liquidity);
+      els.statPositiveGap.textContent = String(positiveGap);
+    }
+
+    function bindEvents() {
+      els.refreshBtn.addEventListener('click', loadMarkets);
+      els.searchInput.addEventListener('input', applyFilters);
+      els.categorySelect.addEventListener('change', applyFilters);
+      els.sortSelect.addEventListener('change', applyFilters);
+      els.limitSelect.addEventListener('change', loadMarkets);
+    }
+
+    function boot() {
+      bindEvents();
+      loadMarkets();
+      state.timer = window.setInterval(loadMarkets, 30000);
+    }
+
+    boot();
+  </script>
+</body>
+</html>
