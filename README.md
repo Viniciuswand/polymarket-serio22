@@ -42,3 +42,23 @@ Se quiser transformar isso em uma plataforma ainda mais forte, o próximo passo 
 - detalhes por mercado
 - histórico de preços
 - alertas
+
+
+## Rodar localmente (sem Vercel)
+
+Se o deploy no Vercel estiver instável, você pode testar o painel localmente com um servidor Node incluído no projeto.
+
+1. Garanta Node.js 18+ instalado.
+2. Na raiz do projeto, rode:
+
+```bash
+node server.js
+```
+
+3. Abra no navegador:
+
+```text
+http://localhost:3000
+```
+
+O endpoint local `/api/markets` usa o mesmo handler de `api/markets.js`, então você consegue validar o comportamento da API sem depender do ambiente de deploy.
