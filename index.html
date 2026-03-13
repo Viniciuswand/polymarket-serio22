@@ -650,9 +650,18 @@
         state.raw = markets;
         state.lastSyncIso = payload.meta?.fetchedAt || new Date().toISOString();
 
-        setStatus('ok', 'Online', 'Dados recebidos da API oficial. Nenhum fallback simulado foi usado.');
-        els.lastSync.textContent = `Sync: ${formatDate(state.lastSyncIso)}`;
-        setNotice(`Carregados ${markets.length} mercados do Polymarket.`, 'info');
+        const isDegraded = Boolean(payload.meta?.degraded);
+        const warning = payload.meta?.warning || '';
+
+        if (isDegraded) {
+          setStatus('', 'Modo contingência', 'API instável no momento. Exibindo último snapshot válido em cache.');
+          els.lastSync.textContent = `Último sync válido: ${formatDate(state.lastSyncIso)}`;
+          setNotice(warning || `Carregados ${markets.length} mercados do snapshot de contingência.`, 'info');
+        } else {
+          setStatus('ok', 'Online', 'Dados recebidos da API oficial do Polymarket.');
+          els.lastSync.textContent = `Sync: ${formatDate(state.lastSyncIso)}`;
+          setNotice(`Carregados ${markets.length} mercados do Polymarket.`, 'info');
+        }
         rebuildCategories();
         applyFilters();
       } catch (error) {
@@ -660,7 +669,7 @@
         state.filtered = [];
         renderTable();
         updateStats();
-        setStatus('err', 'Falha na carga', 'A API não respondeu de forma confiável. O painel não exibirá dados inventados.');
+        setStatus('err', 'Falha na carga', 'Não foi possível obter dados da API nem cache de contingência.');
         els.lastSync.textContent = 'Sem sync válido';
         setNotice(error?.message || 'Erro ao consultar os dados.', 'error');
       } finally {
